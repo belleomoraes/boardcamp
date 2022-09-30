@@ -21,7 +21,7 @@ async function AddGame(req, res) {
 
 async function ShowGames(req, res) {
   const { name } = req.query;
-
+  
   if (name) {
     try {
       const allGames = await connection.query(`SELECT * FROM games WHERE name LIKE "${name}%"`);

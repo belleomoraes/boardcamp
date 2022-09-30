@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import categoriesRouter from './routers/categories.routers.js'
 import gamesRouter from './routers/games.routers.js'
+import customersRouter from './routers/customers.routers.js'
 
 
 const server = express();
@@ -11,6 +12,7 @@ server.use(express.json());
 
 server.use(categoriesRouter);
 server.use(gamesRouter);
+server.use(customersRouter);
 
 const port = process.env.PORT || 4000;
  

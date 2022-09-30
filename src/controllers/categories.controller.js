@@ -1,6 +1,5 @@
 import connection from "../database/db.js";
 
-
 async function AddCategory (req, res) {
     const { name } = req.body
 

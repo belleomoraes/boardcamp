@@ -1,7 +1,7 @@
 import joi from 'joi'
 
 const CategorySchema = joi.object({
-    name: joi.string().min(1).required(),
+    name: joi.string().trim().required(),
   });
   
   function validateCategorySchema(req, res, next) {
