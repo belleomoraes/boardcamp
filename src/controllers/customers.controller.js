@@ -40,4 +40,19 @@ async function Showcustomers(req, res) {
   }
 }
 
-export { AddCostumer, Showcustomers };
+
+async function ShowSelectedCustomerById(req, res) {
+    const { idCustomer } = req.query;
+  
+    try {
+      const selectedCustomers = await connection.query("SELECT * FROM customers WHERE id = $1", [idCustomer]);
+      if (selectedCustomers.rows.length === 0) {
+        return res.status(404).send({message: "Este usuário não existe"})
+      }
+      res.status(201).send(selectedCustomers.rows);
+    } catch (error) {
+      res.status(500).send({ message: error.message });
+    }
+  }
+
+export { AddCostumer, Showcustomers, ShowSelectedCustomerById };
