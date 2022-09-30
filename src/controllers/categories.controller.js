@@ -18,6 +18,7 @@ async function AddCategory (req, res) {
   }
 
   async function ShowCategories (req, res) {
+    
     try {
      const allCategories = await connection.query('SELECT * FROM categories');
       res.status(201).send(allCategories.rows);
