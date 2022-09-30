@@ -24,8 +24,11 @@ async function ShowGames(req, res) {
 
   if (name) {
     try {
-      const allGames = await connection.query(`SELECT * FROM games WHERE name LIKE "${name}%"`);
-      return res.status(201).send(allGames.rows);
+      const allGames = await connection.query(`SELECT * FROM games WHERE name LIKE '${name[0].toUpperCase()}${name.slice(1).toLowerCase()}%'`);
+      if (allGames.rows.length !== 0) {
+        return res.status(201).send(allGames.rows);
+      } else
+        return res.status(400).send({ message: "Não existem jogos cadastrados com estas iniciais" });
     } catch (error) {
       return res.status(500).send({ message: error.message });
     }
