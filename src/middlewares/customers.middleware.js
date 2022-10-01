@@ -2,9 +2,9 @@ import joi from "joi";
 
 const customersSchema = joi.object({
   name: joi.string().trim().required(),
-  phone: joi.number().min(10).max(11).required(),
-  cpf: joi.number().min(11).max(11).required(),
-  birthday: joi.date().required(),
+  phone: joi.string().min(10).max(11).pattern(/^[0-9]+$/).required(),
+  cpf: joi.string().length(11).pattern(/^[0-9]+$/).required(),
+  birthday: joi.date().less('now').required(),
 });
 
 function validatecustomerschema(req, res, next) {

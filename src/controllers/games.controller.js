@@ -2,7 +2,12 @@ import connection from "../database/db.js";
 
 async function AddGame(req, res) {
   const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
-
+  const isCategoryExists = await connection.query("SELECT * FROM categories WHERE id = $1", [
+    categoryId,
+  ]);
+  if (isCategoryExists.rows.length === 0) {
+    return res.status(400).send({ message: "Esta categoria de jogo não existe" });
+  }
   const isGameExists = await connection.query("SELECT * FROM games WHERE name = $1", [name]);
 
   if (isGameExists.rows.length !== 0) {
@@ -24,11 +29,17 @@ async function ShowGames(req, res) {
 
   if (name) {
     try {
-      const allGames = await connection.query(`SELECT * FROM games WHERE name LIKE '${name[0].toUpperCase()}${name.slice(1).toLowerCase()}%'`);
+      const allGames = await connection.query(
+        `SELECT * FROM games WHERE name LIKE '${name[0].toUpperCase()}${name
+          .slice(1)
+          .toLowerCase()}%'`
+      );
       if (allGames.rows.length !== 0) {
         return res.status(201).send(allGames.rows);
       } else
-        return res.status(400).send({ message: "Não existem jogos cadastrados com estas iniciais" });
+        return res
+          .status(400)
+          .send({ message: "Não existem jogos cadastrados com estas iniciais" });
     } catch (error) {
       return res.status(500).send({ message: error.message });
     }

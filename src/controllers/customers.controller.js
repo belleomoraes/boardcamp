@@ -1,17 +1,17 @@
 import connection from "../database/db.js";
 
-async function AddCostumer(req, res) {
-  const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
+async function AddCustomer(req, res) {
+  const { name, phone, cpf, birthday } = req.body;
 
-  const isGameExists = await connection.query("SELECT * FROM games WHERE name = $1", [name]);
+  const isCustomerExists = await connection.query("SELECT * FROM customers WHERE cpf = $1", [cpf]);
 
-  if (isGameExists.rows.length !== 0) {
-    return res.status(409).send({ message: "Este jogo já existe" });
+  if (isCustomerExists.rows.length !== 0) {
+    return res.status(409).send({ message: "Este cpf já está cadastrado" });
   }
   try {
-    const gameInsertion = await connection.query(
-      "INSERT INTO games (name, image, stockTotal, categoryId, pricePerDay) VALUES ($1, $2, $3, $4, $5)",
-      [name, image, stockTotal, categoryId, pricePerDay]
+    const customerInsertion = await connection.query(
+      'INSERT INTO customers ("name", "phone", "cpf", "birthday") VALUES ($1, $2, $3, $4)',
+      [name, phone, cpf, birthday]
     );
     res.sendStatus(201);
   } catch (error) {
@@ -24,10 +24,10 @@ async function Showcustomers(req, res) {
 
   if (cpfQuery) {
     try {
-      const selectedCostumers = await connection.query(
+      const selectedCustomers = await connection.query(
         `SELECT * FROM customers WHERE cpf LIKE "${cpfQuery}%"`
       );
-      return res.status(201).send(selectedCostumers.rows);
+      return res.status(201).send(selectedCustomers.rows);
     } catch (error) {
       return res.status(500).send({ message: error.message });
     }
@@ -40,19 +40,20 @@ async function Showcustomers(req, res) {
   }
 }
 
-
 async function ShowSelectedCustomerById(req, res) {
-    const { idCustomer } = req.query;
-  
-    try {
-      const selectedCustomers = await connection.query("SELECT * FROM customers WHERE id = $1", [idCustomer]);
-      if (selectedCustomers.rows.length === 0) {
-        return res.status(404).send({message: "Este usuário não existe"})
-      }
-      res.status(201).send(selectedCustomers.rows);
-    } catch (error) {
-      res.status(500).send({ message: error.message });
-    }
-  }
+  const { idCustomer } = req.query;
 
-export { AddCostumer, Showcustomers, ShowSelectedCustomerById };
+  try {
+    const selectedCustomers = await connection.query("SELECT * FROM customers WHERE id = $1", [
+      idCustomer,
+    ]);
+    if (selectedCustomers.rows.length === 0) {
+      return res.status(404).send({ message: "Este usuário não existe" });
+    }
+    res.status(201).send(selectedCustomers.rows);
+  } catch (error) {
+    res.status(500).send({ message: error.message });
+  }
+}
+
+export { AddCustomer, Showcustomers, ShowSelectedCustomerById };
