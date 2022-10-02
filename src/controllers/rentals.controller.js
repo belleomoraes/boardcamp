@@ -1,29 +1,33 @@
 import connection from "../database/db.js";
-import dayjs from 'dayjs'
+import dayjs from "dayjs";
 
 async function AddRent(req, res) {
   const { customerId, gameId, daysRented } = req.body;
-  const isCustomerExists = await connection.query('SELECT * FROM customers WHERE id = $1', [
+  const isCustomerExists = await connection.query("SELECT * FROM customers WHERE id = $1", [
     customerId,
   ]);
   if (isCustomerExists.rows.length === 0) {
     return res.status(400).send({ message: "Esta cliente não existe" });
   }
-  const isGameExists = await connection.query('SELECT * FROM games WHERE id = $1', [gameId]);
+  const isGameExists = await connection.query("SELECT * FROM games WHERE id = $1", [gameId]);
 
   if (isGameExists.rows.length === 0) {
     return res.status(409).send({ message: "Este jogo não existe" });
   }
 
-  const gameStock = await connection.query('SELECT "stockTotal" FROM games WHERE id = $1', [gameId]);
+  const gameStock = await connection.query('SELECT "stockTotal" FROM games WHERE id = $1', [
+    gameId,
+  ]);
 
-  if(gameStock.rows === 0) {
-    res.status(400).send({message: "Este jogo não está disponível"})
+  if (gameStock.rows === 0) {
+    res.status(400).send({ message: "Este jogo não está disponível" });
   }
-  const rentDate = dayjs().format("YYYY/M/D")
-  const gamePrice = await connection.query('SELECT "pricePerDay" FROM games WHERE id = $1', [gameId]);
-  const originalPrice = gamePrice.rows[0].pricePerDay * daysRented
- 
+  const rentDate = dayjs().format("YYYY/M/D");
+  const gamePrice = await connection.query('SELECT "pricePerDay" FROM games WHERE id = $1', [
+    gameId,
+  ]);
+  const originalPrice = gamePrice.rows[0].pricePerDay * daysRented;
+
   try {
     const rentInsertion = await connection.query(
       'INSERT INTO rentals ("customerId", "gameId", "daysRented", "rentDate", "originalPrice", "returnDate", "delayFee") VALUES ($1, $2, $3, $4, $5, $6, $7)',
@@ -69,36 +73,48 @@ async function ShowRentals(req, res) {
     const allRentals = await connection.query(
       'SELECT rentals."customerId", rentals."gameId", rentals."daysRented", rentals."rentDate", rentals."originalPrice", rentals."returnDate", rentals."delayFee", customers.id, customers.name, games.id, games.name, games."categoryId" FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id'
     );
-    
+
     res.status(201).send(allRentals.rows);
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).send({ message: error.message });
   }
 }
 
 async function ConcludeRent(req, res) {
-  const { idCustomer } = req.params;
-  const { name, phone, cpf, birthday } = req.body;
+  const { id } = req.params;
 
-  const selectedCustomers = await connection.query("SELECT * FROM customers WHERE id = $1", [
-    idCustomer,
-  ]);
+  const selectedRentals = await connection.query("SELECT * FROM rentals WHERE id = $1", [id]);
 
-  if (selectedCustomers.rows.length === 0) {
-    return res.status(404).send({ message: "Este usuário não existe" });
+  const isRentalFinished = await connection.query(
+    'SELECT "returnDate", "delayFee" FROM rentals WHERE id = $1',
+    [id]
+  );
+
+  if (isRentalFinished.rows[0].returnDate === null && isRentalFinished.rows[0].delayFee === 0) {
+    return res.status(400).send({ message: "Este aluguel já foi finalizado" });
   }
 
-  const isCustomerExists = await connection.query("SELECT * FROM customers WHERE cpf = $1", [cpf]);
+  if (selectedRentals.rows.length === 0) {
+    return res.status(404).send({ message: "Este aluguel não existe" });
+  }
+  const diasAlugados = (Date.now() - selectedRentals.rows[0].rentDate) / 1000 / 60 / 60 / 24;
+  const dateToday = dayjs().format("YYYY-M-D");
+  let debt;
 
-  if (isCustomerExists.rows.length !== 0) {
-    return res.status(409).send({ message: "Este cpf já está cadastrado" });
+  if (diasAlugados <= selectedRentals.rows[0].daysRented) {
+    debt = 0;
+  }
+  if (diasAlugados > selectedRentals.rows[0].daysRented) {
+    debt =
+      (diasAlugados - parseInt(selectedRentals.rows[0].daysRented)) *
+      selectedRentals.rows[0].delayFee;
   }
 
   try {
     const updatedData = await connection.query(
-      `UPDATE customers SET name = '${name}', phone = '${phone}', cpf = '${cpf}', birthday = '${birthday}' WHERE id = $1`,
-      [idCustomer]
+      `UPDATE rentals SET "returnDate" = $1, "delayFee" = $2 WHERE id = $3  `,
+      [dateToday, debt, id]
     );
     res.sendStatus(200);
   } catch (error) {
@@ -108,28 +124,20 @@ async function ConcludeRent(req, res) {
 }
 
 async function DeleteRent(req, res) {
-  const { idCustomer } = req.params;
+  const { id } = req.params;
   const { name, phone, cpf, birthday } = req.body;
 
-  const selectedCustomers = await connection.query("SELECT * FROM customers WHERE id = $1", [
-    idCustomer,
-  ]);
+  const selectedRent = await connection.query("SELECT * FROM rentals WHERE id = $1", [id]);
 
-  if (selectedCustomers.rows.length === 0) {
-    return res.status(404).send({ message: "Este usuário não existe" });
+  if (selectedRent.rows.length === 0) {
+    return res.status(404).send({ message: "Este aluguel não existe" });
   }
 
-  const isCustomerExists = await connection.query("SELECT * FROM customers WHERE cpf = $1", [cpf]);
-
-  if (isCustomerExists.rows.length !== 0) {
-    return res.status(409).send({ message: "Este cpf já está cadastrado" });
+  if (selectedRent.rows[0].returnDate !== null || selectedRent.rows[0].delayFee !== 0) {
+    return res.status(400).send({ message: "Este aluguel ainda não foi finalizado" });
   }
-
   try {
-    const updatedData = await connection.query(
-      `UPDATE customers SET name = '${name}', phone = '${phone}', cpf = '${cpf}', birthday = '${birthday}' WHERE id = $1`,
-      [idCustomer]
-    );
+    const deletedData = await connection.query(`DELETE FROM rentals WHERE id = $1 LIMIT 1`, [id]);
     res.sendStatus(200);
   } catch (error) {
     console.log(error);
