@@ -29,9 +29,11 @@ async function AddRent(req, res) {
       'INSERT INTO rentals ("customerId", "gameId", "daysRented", "rentDate", "originalPrice", "returnDate", "delayFee") VALUES ($1, $2, $3, $4, $5, $6, $7)',
       [customerId, gameId, daysRented, rentDate, originalPrice, null, null]
     );
-    const updatedStock = isGameExists.rows[0].stockTotal - 1
-    const updateGame = await connection.query(`UPDATE games SET "stockTotal" = $1 WHERE id = $2`,
-    [updatedStock, gameId])
+    const updatedStock = isGameExists.rows[0].stockTotal - 1;
+    const updateGame = await connection.query(`UPDATE games SET "stockTotal" = $1 WHERE id = $2`, [
+      updatedStock,
+      gameId,
+    ]);
     res.sendStatus(201);
   } catch (error) {
     res.status(500).send({ message: error.message });
@@ -51,7 +53,7 @@ async function ShowRentals(req, res) {
         return res.status(201).send(selectedRentals.rows);
       } else return res.status(400).send({ message: "Este usuário ainda não alugou um jogo" });
     } catch (error) {
-      console.log(error)
+      console.log(error);
       return res.status(500).send({ message: error.message });
     }
   }
@@ -71,12 +73,11 @@ async function ShowRentals(req, res) {
   }
   try {
     const allRentals = await connection.query(
-      'SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."daysRented", rentals."rentDate", rentals."originalPrice", rentals."returnDate", rentals."delayFee", customers.id AS "customerId", customers.name, games.id AS "gameId", games.name, games."categoryId" FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id'
+      `SELECT rentals.*, JSON_BUILD_OBJECT('id', customers.id, 'name', customers.name) AS customer, JSON_BUILD_OBJECT('id', games.id, 'name', games.name, 'categoryId', games."categoryId", 'categoryName', categories.name) AS game FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id JOIN categories ON games."categoryId" = categories.id`
     );
-
     res.status(201).send(allRentals.rows);
   } catch (error) {
-    console.log(error);
+    console.log(error)
     res.status(500).send({ message: error.message });
   }
 }
@@ -86,24 +87,28 @@ async function ConcludeRent(req, res) {
 
   const selectedRentals = await connection.query("SELECT * FROM rentals WHERE id = $1", [id]);
 
-  if (selectedRentals.rows[0].returnDate === null && selectedRentals.rows[0].delayFee === 0) {
+  if (selectedRentals.rows[0].returnDate !== null && selectedRentals.rows[0].delayFee === 0) {
     return res.status(400).send({ message: "Este aluguel já foi finalizado" });
   }
 
   if (selectedRentals.rows.length === 0) {
     return res.status(404).send({ message: "Este aluguel não existe" });
   }
-  const diasAlugados = (Date.now() - selectedRentals.rows[0].rentDate) / 1000 / 60 / 60 / 24;
+  const pricePerDayRented = await connection.query(
+    'SELECT "pricePerDay" FROM games WHERE id = $1',
+    [selectedRentals.rows[0].gameId]
+  );
+  const numberDaysRented = (Date.now() - selectedRentals.rows[0].rentDate) / 1000 / 60 / 60 / 24;
   const dateToday = dayjs().format("YYYY-M-D");
   let debt;
 
-  if (diasAlugados <= selectedRentals.rows[0].daysRented) {
+  if (numberDaysRented <= selectedRentals.rows[0].daysRented) {
     debt = 0;
   }
-  if (diasAlugados > selectedRentals.rows[0].daysRented) {
+  if (numberDaysRented > selectedRentals.rows[0].daysRented) {
     debt =
-      (diasAlugados - parseInt(selectedRentals.rows[0].daysRented)) *
-      selectedRentals.rows[0].delayFee;
+      (numberDaysRented - parseInt(selectedRentals.rows[0].daysRented)) *
+      pricePerDayRented.rows[0].pricePerDay;
   }
 
   try {
@@ -126,11 +131,13 @@ async function DeleteRent(req, res) {
     return res.status(404).send({ message: "Este aluguel não existe" });
   }
 
-  if (selectedRent.rows[0].returnDate !== null || selectedRent.rows[0].delayFee !== 0) {
+  console.log(selectedRent.rows[0].returnDate);
+  console.log(selectedRent.rows[0].delayFee);
+  if (selectedRent.rows[0].returnDate !== null && selectedRent.rows[0].delayFee !== 0) {
     return res.status(400).send({ message: "Este aluguel ainda não foi finalizado" });
   }
   try {
-    const deletedData = await connection.query("DELETE FROM rentals WHERE id = $1 LIMIT 1", [id]);
+    const deletedData = await connection.query("DELETE FROM rentals WHERE id = $1", [id]);
     res.sendStatus(200);
   } catch (error) {
     console.log(error);
