@@ -7,7 +7,7 @@ async function AddRent(req, res) {
     customerId,
   ]);
   if (isCustomerExists.rows.length === 0) {
-    return res.status(400).send({ message: "Esta cliente não existe" });
+    return res.status(400).send({ message: "Este cliente não existe" });
   }
   const isGameExists = await connection.query("SELECT * FROM games WHERE id = $1", [gameId]);
 
@@ -15,11 +15,7 @@ async function AddRent(req, res) {
     return res.status(409).send({ message: "Este jogo não existe" });
   }
 
-  const gameStock = await connection.query('SELECT "stockTotal" FROM games WHERE id = $1', [
-    gameId,
-  ]);
-
-  if (gameStock.rows === 0) {
+  if (isGameExists.rows[0].stockTotal === 0) {
     res.status(400).send({ message: "Este jogo não está disponível" });
   }
   const rentDate = dayjs().format("YYYY/M/D");
@@ -33,6 +29,9 @@ async function AddRent(req, res) {
       'INSERT INTO rentals ("customerId", "gameId", "daysRented", "rentDate", "originalPrice", "returnDate", "delayFee") VALUES ($1, $2, $3, $4, $5, $6, $7)',
       [customerId, gameId, daysRented, rentDate, originalPrice, null, null]
     );
+    const updatedStock = isGameExists.rows[0].stockTotal - 1
+    const updateGame = await connection.query(`UPDATE games SET "stockTotal" = $1 WHERE id = $2`,
+    [updatedStock, gameId])
     res.sendStatus(201);
   } catch (error) {
     res.status(500).send({ message: error.message });
@@ -59,7 +58,7 @@ async function ShowRentals(req, res) {
   if (gameId) {
     try {
       const selectedRentals = await connection.query(
-        'SELECT * FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id WHERE rentals.gameId = $1',
+        'SELECT rentals."customerId", rentals."gameId", rentals."daysRented", rentals."rentDate", rentals."originalPrice", rentals."returnDate", rentals."delayFee", customers.id, customers.name, games.id, games.name, games."categoryId" FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id WHERE rentals."gameId" = $1',
         [gameId]
       );
       if (selectedRentals.rows.length !== 0) {
@@ -86,12 +85,7 @@ async function ConcludeRent(req, res) {
 
   const selectedRentals = await connection.query("SELECT * FROM rentals WHERE id = $1", [id]);
 
-  const isRentalFinished = await connection.query(
-    'SELECT "returnDate", "delayFee" FROM rentals WHERE id = $1',
-    [id]
-  );
-
-  if (isRentalFinished.rows[0].returnDate === null && isRentalFinished.rows[0].delayFee === 0) {
+  if (selectedRentals.rows[0].returnDate === null && selectedRentals.rows[0].delayFee === 0) {
     return res.status(400).send({ message: "Este aluguel já foi finalizado" });
   }
 
@@ -125,8 +119,6 @@ async function ConcludeRent(req, res) {
 
 async function DeleteRent(req, res) {
   const { id } = req.params;
-  const { name, phone, cpf, birthday } = req.body;
-
   const selectedRent = await connection.query("SELECT * FROM rentals WHERE id = $1", [id]);
 
   if (selectedRent.rows.length === 0) {
@@ -137,7 +129,7 @@ async function DeleteRent(req, res) {
     return res.status(400).send({ message: "Este aluguel ainda não foi finalizado" });
   }
   try {
-    const deletedData = await connection.query(`DELETE FROM rentals WHERE id = $1 LIMIT 1`, [id]);
+    const deletedData = await connection.query("DELETE FROM rentals WHERE id = $1 LIMIT 1", [id]);
     res.sendStatus(200);
   } catch (error) {
     console.log(error);
