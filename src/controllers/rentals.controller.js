@@ -41,7 +41,7 @@ async function ShowRentals(req, res) {
   if (customerId) {
     try {
       const selectedRentals = await connection.query(
-        'SELECT * FROM rentals JOIN customers ON rentals."customerId" = customer.id JOIN games ON rentals."gameId" = game.id WHERE rentals.customerId = $1',
+        'SELECT (rentals."customerId", rentals."gameId", rentals."daysRented", rentals."rentDate", rentals."originalPrice", rentals."returnDate", rentals."delayFee", customers.id, customers.name, games.id, games.name, games."categoryId", games."categoryName") FROM rentals JOIN customers ON rentals."customerId" = customer.id JOIN games ON rentals."gameId" = game.id WHERE rentals.customerId = $1',
         [customerId]
       );
       if (selectedRentals.rows.length !== 0) {
@@ -55,7 +55,7 @@ async function ShowRentals(req, res) {
   if (gameId) {
     try {
       const selectedRentals = await connection.query(
-        'SELECT * FROM rentals JOIN customers ON rentals."customerId" = customer.id JOIN games ON rentals."gameId" = game.id WHERE rentals.gameId = $1',
+        'SELECT * FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id WHERE rentals.gameId = $1',
         [gameId]
       );
       if (selectedRentals.rows.length !== 0) {
@@ -67,10 +67,12 @@ async function ShowRentals(req, res) {
   }
   try {
     const allRentals = await connection.query(
-      'SELECT * FROM rentals'
+      'SELECT rentals."customerId", rentals."gameId", rentals."daysRented", rentals."rentDate", rentals."originalPrice", rentals."returnDate", rentals."delayFee", customers.id, customers.name, games.id, games.name, games."categoryId" FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id'
     );
+    
     res.status(201).send(allRentals.rows);
   } catch (error) {
+    console.log(error)
     res.status(500).send({ message: error.message });
   }
 }
