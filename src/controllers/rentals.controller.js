@@ -8,7 +8,7 @@ async function AddRent(req, res) {
     gameId,
   ]);
   const originalPrice = gamePrice.rows[0].pricePerDay * daysRented;
-
+  const isGameExists = await connection.query("SELECT * FROM games WHERE name = $1", [gameId]);
   try {
     const rentInsertion = await connection.query(
       'INSERT INTO rentals ("customerId", "gameId", "daysRented", "rentDate", "originalPrice", "returnDate", "delayFee") VALUES ($1, $2, $3, $4, $5, $6, $7)',
@@ -31,7 +31,7 @@ async function ShowRentals(req, res) {
   if (customerId) {
     try {
       const selectedRentals = await connection.query(
-        'SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."daysRented", rentals."rentDate", rentals."originalPrice", rentals."returnDate", rentals."delayFee", customers.id AS "customerId", customers.name, games.id AS "gameId", games.name, games."categoryId" FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id WHERE rentals."customerId" = $1',
+        `SELECT rentals.*, JSON_BUILD_OBJECT('id', customers.id, 'name', customers.name) AS customer, JSON_BUILD_OBJECT('id', games.id, 'name', games.name, 'categoryId', games."categoryId", 'categoryName', categories.name) AS game FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id JOIN categories ON games."categoryId" = categories.id WHERE rentals."customerId" = $1`,
         [customerId]
       );
       if (selectedRentals.rows.length !== 0) {
@@ -46,7 +46,7 @@ async function ShowRentals(req, res) {
   if (gameId) {
     try {
       const selectedRentals = await connection.query(
-        'SELECT rentals.id, rentals."customerId", rentals."gameId", rentals."daysRented", rentals."rentDate", rentals."originalPrice", rentals."returnDate", rentals."delayFee", customers.id AS "customerId", customers.name, games.id AS "gameId", games.name, games."categoryId" FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id WHERE rentals."gameId" = $1',
+        `SELECT rentals.*, JSON_BUILD_OBJECT('id', customers.id, 'name', customers.name) AS customer, JSON_BUILD_OBJECT('id', games.id, 'name', games.name, 'categoryId', games."categoryId", 'categoryName', categories.name) AS game FROM rentals JOIN customers ON rentals."customerId" = customers.id JOIN games ON rentals."gameId" = games.id JOIN categories ON games."categoryId" = categories.id WHERE rentals."gameId" = $1`,
         [gameId]
       );
       if (selectedRentals.rows.length !== 0) {
@@ -89,14 +89,23 @@ async function ConcludeRent(req, res) {
       pricePerDayRented.rows[0].pricePerDay;
   }
 
+  const gameRent = await connection.query("SELECT * FROM games WHERE id = $1", [
+    selectedRentals.rows[0].gameId,
+  ]);
+  const newStock = gameRent.rows[0].stockTotal + 1;
   try {
-    const updatedData = await connection.query(
+    const updatedDataRent = await connection.query(
       `UPDATE rentals SET "returnDate" = $1, "delayFee" = $2 WHERE id = $3  `,
       [dateToday, debt, id]
     );
+
+    const updatedDataGame = await connection.query(
+      `UPDATE games SET "stockTotal" = $1 WHERE id = $2  `,
+      [newStock, selectedRentals.rows[0].gameId]
+    );
+
     res.sendStatus(200);
   } catch (error) {
-    console.log(error);
     res.status(500).send({ message: error.message });
   }
 }
