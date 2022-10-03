@@ -36,11 +36,12 @@ async function Showcustomers(req, res) {
 }
 
 async function ShowSelectedCustomerById(req, res) {
-  const { idCustomer } = req.query;
+  const { idCustomer } = req.params;
   try {
     const selectedCustomers = await connection.query("SELECT * FROM customers WHERE id = $1", [
       idCustomer,
     ]);
+    console.log(selectedCustomers.rows)
     if (selectedCustomers.rows.length === 0) {
       return res.status(404).send({ message: "Este usuário não existe" });
     }
