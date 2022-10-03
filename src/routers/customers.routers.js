@@ -8,6 +8,6 @@ const router = express.Router();
 router.get("/customers", Showcustomers);
 router.get("/customers/:idCustomer", ShowSelectedCustomerById);
 router.post("/customers", validatecustomerschema, isCPFExists, AddCustomer);
-router.put("/customers/:idCustomer", validatecustomerschema, isCPFExists, isCustomerExists, UpdateCustomer);
+router.put("/customers/:idCustomer", validatecustomerschema, isCustomerExists, isCPFExists, UpdateCustomer);
 
 export default router;
