@@ -19,7 +19,7 @@ async function ShowGames(req, res) {
   if (name) {
     try {
       const allGames = await connection.query(
-        `SELECT * FROM games WHERE name LIKE '${name[0].toUpperCase()}${name
+        `SELECT * FROM games WHERE name ILIKE '${name[0].toUpperCase()}${name
           .slice(1)
           .toLowerCase()}%'`
       );
