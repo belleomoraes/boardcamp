@@ -38,7 +38,6 @@ async function ShowRentals(req, res) {
         return res.status(201).send(selectedRentals.rows);
       } else return res.status(400).send({ message: "Este usuário ainda não alugou um jogo" });
     } catch (error) {
-      console.log(error);
       return res.status(500).send({ message: error.message });
     }
   }
