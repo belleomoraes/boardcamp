@@ -2,17 +2,6 @@ import connection from "../database/db.js";
 
 async function AddGame(req, res) {
   const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
-  const isCategoryExists = await connection.query("SELECT * FROM categories WHERE id = $1", [
-    categoryId,
-  ]);
-  if (isCategoryExists.rows.length === 0) {
-    return res.status(400).send({ message: "Esta categoria de jogo não existe" });
-  }
-  const isGameExists = await connection.query("SELECT * FROM games WHERE name = $1", [name]);
-
-  if (isGameExists.rows.length !== 0) {
-    return res.status(409).send({ message: "Este jogo já existe" });
-  }
   try {
     const gameInsertion = await connection.query(
       'INSERT INTO games ("name", "image", "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5)',

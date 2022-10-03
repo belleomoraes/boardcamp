@@ -3,21 +3,6 @@ import dayjs from "dayjs";
 
 async function AddRent(req, res) {
   const { customerId, gameId, daysRented } = req.body;
-  const isCustomerExists = await connection.query("SELECT * FROM customers WHERE id = $1", [
-    customerId,
-  ]);
-  if (isCustomerExists.rows.length === 0) {
-    return res.status(400).send({ message: "Este cliente não existe" });
-  }
-  const isGameExists = await connection.query("SELECT * FROM games WHERE id = $1", [gameId]);
-
-  if (isGameExists.rows.length === 0) {
-    return res.status(409).send({ message: "Este jogo não existe" });
-  }
-
-  if (isGameExists.rows[0].stockTotal === 0) {
-    res.status(400).send({ message: "Este jogo não está disponível" });
-  }
   const rentDate = dayjs().format("YYYY/M/D");
   const gamePrice = await connection.query('SELECT "pricePerDay" FROM games WHERE id = $1', [
     gameId,
@@ -77,7 +62,7 @@ async function ShowRentals(req, res) {
     );
     res.status(201).send(allRentals.rows);
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).send({ message: error.message });
   }
 }
@@ -87,13 +72,6 @@ async function ConcludeRent(req, res) {
 
   const selectedRentals = await connection.query("SELECT * FROM rentals WHERE id = $1", [id]);
 
-  if (selectedRentals.rows[0].returnDate !== null && selectedRentals.rows[0].delayFee === 0) {
-    return res.status(400).send({ message: "Este aluguel já foi finalizado" });
-  }
-
-  if (selectedRentals.rows.length === 0) {
-    return res.status(404).send({ message: "Este aluguel não existe" });
-  }
   const pricePerDayRented = await connection.query(
     'SELECT "pricePerDay" FROM games WHERE id = $1',
     [selectedRentals.rows[0].gameId]
@@ -131,8 +109,6 @@ async function DeleteRent(req, res) {
     return res.status(404).send({ message: "Este aluguel não existe" });
   }
 
-  console.log(selectedRent.rows[0].returnDate);
-  console.log(selectedRent.rows[0].delayFee);
   if (selectedRent.rows[0].returnDate !== null && selectedRent.rows[0].delayFee !== 0) {
     return res.status(400).send({ message: "Este aluguel ainda não foi finalizado" });
   }

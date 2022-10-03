@@ -3,11 +3,6 @@ import connection from "../database/db.js";
 async function AddCustomer(req, res) {
   const { name, phone, cpf, birthday } = req.body;
 
-  const isCustomerExists = await connection.query("SELECT * FROM customers WHERE cpf = $1", [cpf]);
-
-  if (isCustomerExists.rows.length !== 0) {
-    return res.status(409).send({ message: "Este cpf já está cadastrado" });
-  }
   try {
     const customerInsertion = await connection.query(
       'INSERT INTO customers ("name", "phone", "cpf", "birthday") VALUES ($1, $2, $3, $4)',
@@ -59,21 +54,6 @@ async function ShowSelectedCustomerById(req, res) {
 async function UpdateCustomer(req, res) {
   const { idCustomer } = req.params;
   const { name, phone, cpf, birthday } = req.body;
-
-  const selectedCustomers = await connection.query("SELECT * FROM customers WHERE id = $1", [
-    idCustomer,
-  ]);
-
-  if (selectedCustomers.rows.length === 0) {
-    return res.status(404).send({ message: "Este usuário não existe" });
-  }
-
-  const isCustomerExists = await connection.query("SELECT * FROM customers WHERE cpf = $1", [cpf]);
-
-  if (isCustomerExists.rows.length !== 0) {
-    return res.status(409).send({ message: "Este cpf já está cadastrado" });
-  }
-
   try {
     const updatedData = await connection.query(
       `UPDATE customers SET name = '${name}', phone = '${phone}', cpf = '${cpf}', birthday = '${birthday}' WHERE id = $1`,
@@ -81,7 +61,6 @@ async function UpdateCustomer(req, res) {
     );
     res.sendStatus(200);
   } catch (error) {
-    console.log(error);
     res.status(500).send({ message: error.message });
   }
 }
